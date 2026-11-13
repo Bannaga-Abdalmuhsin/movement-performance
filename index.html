@@ -1,0 +1,350 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>COW Movement Performance</title>
+<style>
+:root{font-family:Inter,system-ui,sans-serif;color:#211334;background:#f7f5fa;--ink:#260d42;--purple:#592789;--muted:#655c70;--line:#e7dfed;--accent:#ee4771}
+*{box-sizing:border-box}body{margin:0}button,input,select{font:inherit}button,select{cursor:pointer}
+header{background:#260d42;color:white;padding:32px max(24px,calc((100vw - 1360px)/2)) 38px;border-bottom:4px solid var(--accent)}
+header p{margin:0;color:#dfcce8;font-size:.86rem}h1{font-size:clamp(1.75rem,4vw,2.85rem);margin:8px 0 0;letter-spacing:-.045em}
+main{max-width:1408px;margin:auto;padding:24px;display:grid;gap:18px}section,.card{background:white;border:1px solid var(--line);border-radius:13px;padding:18px}
+h2{font-size:1.08rem;margin:0 0 12px}h3{font-size:.9rem;margin:16px 0 8px}p{margin:6px 0;color:var(--muted);font-size:.88rem}.actions,.section-head{display:flex;gap:10px;flex-wrap:wrap;align-items:center}.section-head{justify-content:space-between;margin-bottom:8px}.section-head h2{margin:0}
+.actions input[type=url]{flex:1;min-width:210px}input,select,button,.upload{padding:9px 11px;border:1px solid #d8cede;border-radius:7px;background:white;color:var(--ink);min-width:0}
+button.primary{background:var(--purple);color:white;border-color:var(--purple)}button:disabled{opacity:.5;cursor:default}.upload{cursor:pointer}.upload:focus-within{outline:2px solid var(--purple);outline-offset:2px}.upload input{position:absolute;width:1px;height:1px;opacity:0;padding:0}
+.filters{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px}label.field{display:grid;gap:5px;font-size:.82rem;font-weight:600}
+.metrics{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:12px}.card{border-top:3px solid var(--purple);min-width:0}.card span{display:block;color:var(--muted);font-size:.8rem}.card strong{display:block;font-size:1.8rem;margin:6px 0;color:var(--ink);letter-spacing:-.04em}.card small{font-size:.74rem;color:var(--muted)}
+.charts{display:grid;grid-template-columns:1.45fr 1fr;gap:16px}.plot{max-height:340px;overflow:auto}.bar-row{display:grid;grid-template-columns:105px minmax(40px,1fr) 42px;align-items:center;gap:10px;margin:10px 0;font-size:.82rem}.track{height:12px;border-radius:5px;background:#f0eaf6;overflow:hidden;display:flex}.volume{background:var(--purple)}.late{background:var(--accent)}.bar-row strong{text-align:right}.key{display:flex;gap:14px;flex-wrap:wrap}.key i{width:10px;height:10px;border-radius:2px;display:inline-block;margin-right:5px}
+.table-wrap{overflow:auto}table{width:100%;border-collapse:collapse;font-size:.82rem}th,td{text-align:left;padding:10px;border-bottom:1px solid var(--line);vertical-align:top}th{background:#f7f2fb;white-space:nowrap}td:nth-child(-n+4){white-space:nowrap}.exception{color:#a31641;font-weight:650}.pagination{justify-content:flex-end;margin-top:14px}[hidden]{display:none!important}:focus-visible{outline:2px solid var(--purple);outline-offset:2px}
+@media(max-width:1000px){.metrics{grid-template-columns:repeat(3,1fr)}}@media(max-width:680px){main{padding:14px}.filters,.metrics{grid-template-columns:repeat(2,minmax(0,1fr))}.charts{grid-template-columns:1fr}.card{padding:12px}}
+</style>
+</head>
+<body>
+<header><p>stc COW National Program</p><h1>COW Movement Performance</h1></header>
+<main>
+<section aria-labelledby="source-title">
+<h2 id="source-title">Movement tracker</h2>
+<div class="actions">
+<input id="sheet" type="url" aria-label="Google Sheets link" placeholder="Paste the Google Sheets link">
+<button class="primary" id="load">Load from Google Sheets</button>
+<label class="upload">Upload CSV<input id="file" type="file" accept=".csv,text/csv"></label>
+</div>
+<p>Use the COW Movement tracker tab. If Google blocks the direct connection, download that tab as CSV and upload it here.</p>
+<p id="status" role="status" aria-live="polite">Load the tracker to view movement performance.</p>
+</section>
+<section id="filters-panel" hidden>
+<div class="section-head"><h2>Filters</h2><button id="reset">Reset filters</button></div>
+<div class="filters" id="filters"></div>
+</section>
+<div class="metrics" id="metrics" aria-label="Movement metrics" hidden></div>
+<section id="definitions" hidden><details><summary>KPI and travel definitions</summary><p>KPI compliance uses included, non-cancelled records with a valid Exceeded duration. Missing, invalid or year-long exceedances are unassessed. Completed travel requires valid departure and arrival dates. Average travel time requires both timestamps.</p></details></section>
+<div class="charts" id="charts" hidden>
+<section><h2>Monthly movement volume</h2><p class="key"><span><i class="volume"></i>Other completed</span><span><i class="late"></i>KPI exceeded</span></p><div id="trend" class="plot"></div></section>
+<section><h2>Completed by destination region</h2><div id="regions" class="plot"></div><h3>Movement type</h3><div id="types" class="plot"></div></section>
+</div>
+<section id="register" hidden>
+<div class="section-head"><div><h2>Movement register</h2><p id="count"></p></div><button id="export">Export filtered CSV</button></div>
+<div class="table-wrap"><table><thead><tr><th scope="col">Moved</th><th scope="col">COW ID</th><th scope="col">BPM ID</th><th scope="col">Region route</th><th scope="col">Destination / event</th><th scope="col">Vendor</th><th scope="col">Type</th><th scope="col">Travel</th><th scope="col">KPI result</th><th scope="col">Exceeded</th><th scope="col">Remarks</th></tr></thead><tbody id="rows"></tbody></table></div>
+<div class="actions pagination"><button id="prev">Previous</button><span id="page"></span><button id="next">Next</button></div>
+</section>
+</main>
+<script>
+'use strict';
+const byId = id => document.getElementById(id);
+const node = (tag, value, className) => {
+  const element = document.createElement(tag);
+  if (value !== undefined) element.textContent = value;
+  if (className) element.className = className;
+  return element;
+};
+const count = new Intl.NumberFormat('en-GB');
+const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+const regionNames = {CR:'Central', ER:'East', WR:'West', SR:'South'};
+const pageSize = 25;
+let records = [], filtered = [], page = 0, loadVersion = 0;
+
+function parseCsv(csv) {
+  const rows = [];
+  let row = [], value = '', quoted = false;
+  csv = csv.replace(/^\uFEFF/, '');
+  for (let i = 0; i < csv.length; i++) {
+    const char = csv[i];
+    if (char === '"' && quoted && csv[i + 1] === '"') {
+      value += '"';
+      i++;
+    } else if (char === '"' && (quoted || value === '')) {
+      quoted = !quoted;
+    } else if (!quoted && (char === ',' || char === '\n' || char === '\r')) {
+      row.push(value);
+      value = '';
+      if (char !== ',') {
+        rows.push(row);
+        row = [];
+        if (char === '\r' && csv[i + 1] === '\n') i++;
+      }
+    } else {
+      value += char;
+    }
+  }
+  if (quoted) throw new Error('The CSV has an unclosed quoted cell.');
+  if (row.length || value) rows.push([...row, value]);
+  return rows;
+}
+
+const normalized = value => String(value ?? '').trim().toLowerCase().replace(/[^a-z0-9]/g, '');
+const clean = value => /^(?:n\/?a|#n\/a|-)$/i.test(value?.trim()) ? '' : (value ?? '').trim();
+const title = value => value ? value[0].toUpperCase() + value.slice(1).toLowerCase() : '';
+function dateTime(value) {
+  const iso = /^(\d{4})-(\d{1,2})-(\d{1,2})(?:[ T](\d{1,2}):(\d{2})(?::(\d{2}))?)?$/.exec(value);
+  const slash = /^(\d{1,2})\/(\d{1,2})\/(\d{2}|\d{4})(?:\s+(\d{1,2}):(\d{2})(?::(\d{2}))?\s*(AM|PM)?)?$/i.exec(value);
+  const named = /^(\d{1,2})-([a-z]{3})-(\d{2}|\d{4})$/i.exec(value);
+  if (named) {
+    const month = months.indexOf(title(named[2])) + 1;
+    if (!month) return null;
+    const year = +named[3] + (named[3].length === 2 ? 2000 : 0);
+    return dateTime(`${year}-${month}-${named[1]}`);
+  }
+  if (!iso && !slash) return null;
+  const [, a, b, c, h = '0', m = '0', s = '0', period] = iso || slash;
+  const year = iso ? +a : +c + (c.length === 2 ? 2000 : 0);
+  const month = iso ? +b : +a;
+  const day = iso ? +c : +b;
+  if (+m > 59 || +s > 59 || (period ? +h < 1 || +h > 12 : +h > 23)) return null;
+  const hours = period ? (+h % 12) + (period.toUpperCase() === 'PM' ? 12 : 0) : +h;
+  const stamp = new Date(Date.UTC(year, month - 1, day, hours, +m, +s));
+  return stamp.getUTCMonth() === month - 1 && stamp.getUTCDate() === day ? stamp : null;
+}
+
+function duration(value) {
+  const match = /^(\d+):([0-5]\d)(?::([0-5]\d))?$/.exec(value);
+  return match ? +match[1] * 60 + +match[2] + +(match[3] ?? 0) / 60 : null;
+}
+
+function readTracker(csv) {
+  const [header = [], ...rows] = parseCsv(csv);
+  const columns = new Map(header.map((label, i) => [normalized(label), i]));
+  const required = ['cowsid','moveddatetime','reacheddatetime','regionfrom','regionto','vendor','movementtype','includeexcludekpi','exceeded','cancelled'];
+  if (required.some(key => !columns.has(key))) throw new Error('This CSV is missing tracker columns. Export the COW Movement tracker tab with its original headers.');
+  const movements = [];
+  for (const row of rows) {
+    const get = key => clean(row[columns.get(key)]);
+    const cow = get('cowsid').toUpperCase();
+    if (!cow) continue;
+    const movedText = get('moveddatetime');
+    const moved = dateTime(movedText);
+    const reachedText = get('reacheddatetime');
+    const reached = dateTime(reachedText);
+    const cancelled = /^(yes|true|cancelled|canceled|1)$/i.test(get('cancelled'));
+    const completed = !cancelled && moved !== null && reached !== null &&
+      reached.toISOString().slice(0, 10) >= moved.toISOString().slice(0, 10) &&
+      (!movedText.includes(':') || !reachedText.includes(':') || reached >= moved);
+    const travel = completed && movedText.includes(':') && reachedText.includes(':') ? (reached - moved) / 60000 : null;
+    const exceeded = duration(get('exceeded'));
+    const eligible = normalized(get('includeexcludekpi'));
+    const result = cancelled ? 'Cancelled' : eligible === 'excluded' ? 'Excluded' :
+      eligible === 'included' && exceeded !== null && exceeded < 365 * 24 * 60 ?
+        (exceeded > 0 ? 'Exceeded' : 'Within KPI') : 'Unassessed';
+    const monthText = /^([a-z]{3})[- ](\d{2}|\d{4})$/i.exec(get('month'));
+    const monthIndex = monthText ? months.indexOf(title(monthText[1])) : -1;
+    const month = moved ? moved.toISOString().slice(0, 7) : monthIndex >= 0 ?
+      `${monthText[2].length === 2 ? '20' : ''}${monthText[2]}-${String(monthIndex + 1).padStart(2, '0')}` : '';
+    const region = key => {
+      const value = get(key);
+      return regionNames[value.toUpperCase()] ?? title(value);
+    };
+    movements.push({
+      cow, moved, movedText, month, completed, cancelled, travel, result, exceeded,
+      bpm: get('bpmrequestid'), from: region('regionfrom'), to: region('regionto') || 'Unspecified',
+      destination: get('tolocation'), event: get('eventname'), vendor: title(get('vendor')) || 'Unspecified',
+      type: title(get('movementtype')) || 'Unspecified', category: title(get('catogery') || get('category')) || 'Unspecified',
+      planned: title(get('planned')) || 'Unspecified', remarks: get('statusexclusionremarks')
+    });
+  }
+  return movements.sort((a, b) => (b.moved?.getTime() ?? -Infinity) - (a.moved?.getTime() ?? -Infinity));
+}
+
+const selectors = [
+  ['month','Movement month'], ['to','Destination region'], ['vendor','Vendor'], ['type','Movement type'],
+  ['category','Category'], ['planned','Planning'], ['result','KPI result']
+];
+const monthLabel = key => key ? `${months[+key.slice(5) - 1]} ${key.slice(0, 4)}` : 'Unspecified';
+function setupFilters() {
+  const panel = byId('filters');
+  panel.replaceChildren();
+  for (const [key, label] of selectors) {
+    const field = node('label', label, 'field');
+    const select = node('select');
+    select.id = 'filter-' + key;
+    select.append(new Option('All', '*'));
+    const values = [...new Set(records.map(record => record[key]))].sort();
+    if (key === 'month') values.reverse();
+    for (const value of values) select.append(new Option(key === 'month' ? monthLabel(value) : value, value));
+    select.addEventListener('change', update);
+    field.append(select);
+    panel.append(field);
+  }
+  const search = node('label','Search','field');
+  const input = node('input');
+  input.type = 'search';
+  input.placeholder = 'COW ID, BPM ID, location or event';
+  input.id = 'search';
+  input.addEventListener('input', update);
+  search.append(input);
+  panel.append(search);
+}
+
+const minutesLabel = value => {
+  if (value === null) return '—';
+  const rounded = Math.round(value);
+  return `${Math.floor(rounded / 60)}h ${rounded % 60}m`;
+};
+function update() {
+  page = 0;
+  const active = selectors.map(([key]) => [key, byId('filter-' + key).value]);
+  const query = byId('search').value.trim().toLowerCase();
+  filtered = records.filter(record => active.every(([key,value]) => value === '*' || record[key] === value) &&
+    [record.cow,record.bpm,record.destination,record.event].some(value => value.toLowerCase().includes(query)));
+  const completed = filtered.filter(record => record.completed);
+  const within = filtered.filter(record => record.result === 'Within KPI').length;
+  const exceeded = filtered.filter(record => record.result === 'Exceeded').length;
+  const assessed = within + exceeded;
+  const timed = completed.filter(record => record.travel !== null);
+  const unassessed = filtered.filter(record => record.result === 'Unassessed').length;
+  const average = timed.length ? timed.reduce((sum, record) => sum + record.travel, 0) / timed.length : null;
+  const cards = [
+    ['Movement records', count.format(filtered.length), `${count.format(new Set(filtered.map(record => record.cow)).size)} distinct COWs`],
+    ['Completed travel', count.format(completed.length), 'Valid departure and arrival'],
+    ['KPI compliance', assessed ? `${(100 * within / assessed).toFixed(1)}%` : '—', `${count.format(assessed)} assessed · ${count.format(unassessed)} unassessed`],
+    ['KPI exceeded', count.format(exceeded), 'Included with recorded exceedance'],
+    ['Cancelled', count.format(filtered.filter(record => record.cancelled).length), 'Marked cancelled in tracker'],
+    ['Average travel time', minutesLabel(average), `${count.format(timed.length)} records with both times`]
+  ];
+  byId('metrics').replaceChildren(...cards.map(([label, value, note]) => {
+    const card = node('article', undefined, 'card');
+    card.append(node('span', label), node('strong', value), node('small', note));
+    return card;
+  }));
+  drawBars('trend', completed, 'month', true);
+  drawBars('regions', completed, 'to');
+  drawBars('types', completed, 'type');
+  drawRegister();
+}
+
+function drawBars(id, data, key, stacked = false) {
+  const target = byId(id);
+  const groups = new Map();
+  for (const record of data) {
+    const group = groups.get(record[key]) ?? {total:0, late:0};
+    group.total++;
+    if (record.result === 'Exceeded') group.late++;
+    groups.set(record[key], group);
+  }
+  const sorted = [...groups].sort(([a, av], [b, bv]) => stacked ? (a || '9999').localeCompare(b || '9999') : bv.total - av.total || a.localeCompare(b));
+  const max = Math.max(1, ...sorted.map(([, group]) => group.total));
+  target.replaceChildren(...sorted.map(([label, group]) => {
+    const row = node('div', undefined, 'bar-row');
+    const track = node('div', undefined, 'track');
+    track.setAttribute('aria-hidden', 'true');
+    const base = node('span', undefined, 'volume');
+    const late = node('span', undefined, 'late');
+    base.style.width = `${100 * (group.total - (stacked ? group.late : 0)) / max}%`;
+    late.style.width = `${stacked ? 100 * group.late / max : 0}%`;
+    track.append(base, late);
+    const total = node('strong', count.format(group.total));
+    if (stacked) total.setAttribute('aria-label', `${group.total} completed, ${group.late} exceeded`);
+    row.title = stacked ? `${group.total} completed, ${group.late} exceeded` : `${group.total} completed`;
+    row.append(node('span', stacked ? monthLabel(label) : label), track, total);
+    return row;
+  }));
+  if (!sorted.length) target.append(node('p','No completed movements match the filters.'));
+}
+
+function rowValues(record) {
+  return [record.movedText, record.cow, record.bpm, `${record.from || 'Unspecified'} → ${record.to}`,
+    [record.destination, record.event].filter(Boolean).join(' / '), record.vendor, record.type,
+    minutesLabel(record.cancelled ? null : record.travel), record.result,
+    ['Within KPI','Exceeded'].includes(record.result) ? minutesLabel(record.exceeded) : '—', record.remarks];
+}
+function drawRegister() {
+  const totalPages = Math.max(1, Math.ceil(filtered.length / pageSize));
+  const start = page * pageSize;
+  byId('rows').replaceChildren(...filtered.slice(start, start + pageSize).map(record => {
+    const row = node('tr');
+    row.append(...rowValues(record).map((value, i) => node('td', value || '—', i === 8 && record.result === 'Exceeded' ? 'exception' : '')));
+    return row;
+  }));
+  if (!filtered.length) {
+    const row = node('tr');
+    const cell = node('td','No movement records match the filters.');
+    cell.colSpan = 11;
+    row.append(cell);
+    byId('rows').append(row);
+  }
+  byId('count').textContent = filtered.length ? `Showing ${count.format(start + 1)}–${count.format(Math.min(start + pageSize, filtered.length))} of ${count.format(filtered.length)} records` : '0 records';
+  byId('page').textContent = `${page + 1} / ${totalPages}`;
+  byId('prev').disabled = page === 0;
+  byId('next').disabled = page + 1 === totalPages;
+  byId('export').disabled = !filtered.length;
+}
+
+async function loadTracker(getCsv, sourceLabel) {
+  const version = ++loadVersion;
+  byId('status').textContent = 'Loading movement tracker…';
+  try {
+    const data = readTracker(await getCsv());
+    if (version !== loadVersion) return;
+    records = data;
+    setupFilters();
+    for (const id of ['filters-panel','metrics','definitions','charts','register']) byId(id).hidden = false;
+    update();
+    byId('status').textContent = `${count.format(records.length)} records loaded from ${sourceLabel}.`;
+  } catch (error) {
+    if (version !== loadVersion) return;
+    byId('status').textContent = error.message + (records.length ? ' Showing the previously loaded tracker.' : '');
+  }
+}
+
+byId('load').addEventListener('click', () => loadTracker(async () => {
+  let url;
+  try { url = new URL(byId('sheet').value.trim()); } catch { throw new Error('Enter a valid Google Sheets link.'); }
+  const match = /^\/spreadsheets\/d\/([a-zA-Z0-9_-]+)(?:\/|$)/.exec(url.pathname);
+  if (url.origin !== 'https://docs.google.com' || !match) throw new Error('Enter a Google Sheets link from docs.google.com.');
+  const gid = new URLSearchParams(url.hash.slice(1)).get('gid') ?? url.searchParams.get('gid');
+  const csvUrl = new URL(`https://docs.google.com/spreadsheets/d/${match[1]}/export?format=csv`);
+  if (gid && /^\d+$/.test(gid)) csvUrl.searchParams.set('gid',gid);
+  let response;
+  try { response = await fetch(csvUrl, {signal:AbortSignal.timeout(15000)}); } catch { /* CSV upload remains available. */ }
+  if (!response?.ok || response.headers.get('content-type')?.includes('text/html')) {
+    throw new Error('Google Sheets could not be read directly. Download the tracker tab as CSV and upload it here.');
+  }
+  return response.text();
+}, 'Google Sheets'));
+byId('file').addEventListener('change', event => {
+  const file = event.target.files[0];
+  if (file) loadTracker(() => file.text(), file.name);
+  event.target.value = '';
+});
+byId('reset').addEventListener('click', () => {
+  for (const [key] of selectors) byId('filter-' + key).value = '*';
+  byId('search').value = '';
+  update();
+});
+byId('prev').addEventListener('click', () => { page--; drawRegister(); });
+byId('next').addEventListener('click', () => { page++; drawRegister(); });
+byId('export').addEventListener('click', () => {
+  const header = Array.from(document.querySelectorAll('th'), cell => cell.textContent);
+  const escape = value => {
+    const safe = /^\s*[=+@-]/.test(value) ? "'" + value : value;
+    return '"' + safe.replaceAll('"','""') + '"';
+  };
+  const csv = [header, ...filtered.map(rowValues)].map(row => row.map(escape).join(',')).join('\r\n');
+  const link = node('a');
+  link.href = URL.createObjectURL(new Blob(['\uFEFF', csv], {type:'text/csv;charset=utf-8'}));
+  link.download = 'cow-movement-performance.csv';
+  link.click();
+  setTimeout(() => URL.revokeObjectURL(link.href), 1000);
+});
+</script>
+</body>
+</html>
