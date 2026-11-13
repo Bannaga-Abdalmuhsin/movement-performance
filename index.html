@@ -18,37 +18,64 @@ button.primary{background:var(--purple);color:white;border-color:var(--purple)}b
 .charts{display:grid;grid-template-columns:1.45fr 1fr;gap:16px}.plot{max-height:340px;overflow:auto}.bar-row{display:grid;grid-template-columns:105px minmax(40px,1fr) 42px;align-items:center;gap:10px;margin:10px 0;font-size:.82rem}.track{height:12px;border-radius:5px;background:#f0eaf6;overflow:hidden;display:flex}.volume{background:var(--purple)}.late{background:var(--accent)}.bar-row strong{text-align:right}.key{display:flex;gap:14px;flex-wrap:wrap}.key i{width:10px;height:10px;border-radius:2px;display:inline-block;margin-right:5px}
 .table-wrap{overflow:auto}table{width:100%;border-collapse:collapse;font-size:.82rem}th,td{text-align:left;padding:10px;border-bottom:1px solid var(--line);vertical-align:top}th{background:#f7f2fb;white-space:nowrap}td:nth-child(-n+4){white-space:nowrap}.exception{color:#a31641;font-weight:650}.pagination{justify-content:flex-end;margin-top:14px}[hidden]{display:none!important}:focus-visible{outline:2px solid var(--purple);outline-offset:2px}
 @media(max-width:1000px){.metrics{grid-template-columns:repeat(3,1fr)}}@media(max-width:680px){main{padding:14px}.filters,.metrics{grid-template-columns:repeat(2,minmax(0,1fr))}.charts{grid-template-columns:1fr}.card{padding:12px}}
+
+:root{--purple:#4f008c;--accent:#ff375e;--ink:#252139;--muted:#675d77;--line:#eae6f0;background:#f6f5f9}
+.sidebar{position:fixed;inset:0 auto 0 0;width:230px;padding:30px 20px;background:linear-gradient(145deg,#4e167d,#35105b 52%);color:white;display:flex;flex-direction:column;gap:28px;z-index:3}
+.brand{display:flex;align-items:center;gap:14px;font-size:.74rem;line-height:1.5;letter-spacing:.08em}.brand b{font-size:2.5rem;letter-spacing:-.06em;border-right:1px solid #ffffff50;padding-right:13px}
+.sidebar nav{display:grid;gap:6px}.sidebar a{color:#ede2f4;text-decoration:none;border-radius:8px;padding:12px;font-size:.88rem}.sidebar a:hover,.sidebar a[aria-current]{background:#ffffff19;box-shadow:inset 3px 0 var(--accent)}.sidebar small{margin-top:auto;color:#d6c2e6}
+.app-shell{margin-left:230px;min-width:0}.topbar{background:#fff;color:var(--ink);padding:15px 28px;border-bottom:1px solid var(--line);display:flex;justify-content:space-between;align-items:center;gap:12px;font-size:.82rem}.topbar form{margin:0}.page-heading{display:flex;justify-content:space-between;align-items:center;gap:16px}.page-heading h1{font-size:clamp(1.65rem,3vw,2.45rem)}.eyebrow{color:var(--purple);font-weight:700;font-size:.71rem;letter-spacing:.12em}.page-heading p{margin-bottom:0}.card{border-top:1px solid var(--line);box-shadow:0 2px 10px #35105b08}.card strong{color:var(--purple)}.equipment-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px}.equipment-grid>div{min-width:0}.equipment-list{list-style:none;padding:0;margin:0}.equipment-list li{padding:9px 0;border-bottom:1px solid var(--line);display:flex;justify-content:space-between;gap:12px;font-size:.84rem}.equipment-list b{text-align:right}.table-wrap{max-width:100%}.filters{grid-template-columns:repeat(4,minmax(0,1fr))}section{scroll-margin-top:20px}
+@media(max-width:850px){.sidebar{position:static;width:auto;gap:12px;padding:14px 18px}.sidebar nav{display:flex;flex-wrap:wrap}.sidebar small{display:none}.app-shell{margin-left:0}.topbar{padding:12px 18px}}
+@media(max-width:600px){.filters,.equipment-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.equipment-grid{grid-template-columns:1fr}.page-heading{align-items:flex-start;flex-direction:column}}
 </style>
 </head>
 <body>
-<header><p>stc COW National Program</p><h1>COW Movement Performance</h1></header>
-<main>
-<section aria-labelledby="source-title">
-<h2 id="source-title">Movement tracker</h2>
-<div class="actions">
-<input id="sheet" type="url" aria-label="Google Sheets link" placeholder="Paste the Google Sheets link">
-<button class="primary" id="load">Load from Google Sheets</button>
-<label class="upload">Upload CSV<input id="file" type="file" accept=".csv,text/csv"></label>
-</div>
-<p>Use the COW Movement tracker tab. If Google blocks the direct connection, download that tab as CSV and upload it here.</p>
-<p id="status" role="status" aria-live="polite">Load the tracker to view movement performance.</p>
+<aside class="sidebar">
+<div class="brand"><b>stc</b><span>COW<br>OPERATIONS</span></div>
+<nav aria-label="Performance sections"><a href="#overview" aria-current="page">Movement overview</a><a href="#equipment">Heavy equipment</a><a href="#sla-targets">BPM SLA targets</a><a href="#register">Movement register</a></nav>
+<small>ACES Managed Services</small>
+</aside>
+<div class="app-shell">
+<header class="topbar"><span>stc COW / Movement Performance</span><span>Google Sheets</span></header>
+<main id="overview">
+<div class="page-heading"><div><div class="eyebrow">OPERATIONAL EXCELLENCE</div><h1>COW Movement Performance</h1><p>Relocation workload, heavy equipment and BPM SLA performance.</p></div></div>
+<section aria-labelledby="source-heading">
+<h2 id="source-heading">Google Sheets data</h2>
+<p>Enter both tab links once on this browser. The dashboard refreshes from Sheets every five minutes while open.</p>
+<form id="uploads"><div class="filters">
+<label class="field">COW Movement tracker<input id="movement-file" type="url" required></label>
+<label class="field">Equipment MASTER_TRACKER<input id="equipment-file" type="url" required></label>
+</div><div class="actions" style="margin-top:12px"><button class="primary" id="load" type="submit">Connect / Refresh</button></div></form>
+<p id="status" role="status" aria-live="polite">Enter both Google Sheets tab links.</p>
 </section>
 <section id="filters-panel" hidden>
 <div class="section-head"><h2>Filters</h2><button id="reset">Reset filters</button></div>
 <div class="filters" id="filters"></div>
 </section>
 <div class="metrics" id="metrics" aria-label="Movement metrics" hidden></div>
-<section id="definitions" hidden><details><summary>KPI and travel definitions</summary><p>KPI compliance uses included, non-cancelled records with a valid Exceeded duration. Missing, invalid or year-long exceedances are unassessed. Completed travel requires valid departure and arrival dates. Average travel time requires both timestamps.</p></details></section>
+<section id="definitions" hidden><details><summary>KPI and travel definitions</summary><p>BPM SLA compliance uses the tracker’s SLA duration for included, non-cancelled movements. The duration must be strictly below the target. Missing inputs and durations of one year or more are unassessed. Completed travel requires valid departure and arrival dates. Average travel time requires both timestamps.</p></details></section>
+<section id="sla-targets" hidden><h2>BPM relocation SLA targets</h2>
+<div class="table-wrap"><table><thead><tr><th scope="col">Distance</th><th scope="col">Planned</th><th scope="col">Unplanned</th></tr></thead><tbody id="sla-matrix"></tbody></table></div>
+<p>Distance bands use the tracker’s Distance (KM) field. Exactly 200, 500 and 1,000 km fall in the bands ending at those distances.</p>
+</section>
 <div class="charts" id="charts" hidden>
-<section><h2>Monthly movement volume</h2><p class="key"><span><i class="volume"></i>Other completed</span><span><i class="late"></i>KPI exceeded</span></p><div id="trend" class="plot"></div></section>
+<section><h2>Monthly movement volume</h2><p class="key"><span><i class="volume"></i>Other completed</span><span><i class="late"></i>SLA missed</span></p><div id="trend" class="plot"></div></section>
 <section><h2>Completed by destination region</h2><div id="regions" class="plot"></div><h3>Movement type</h3><div id="types" class="plot"></div></section>
 </div>
+<section id="equipment" hidden>
+<div class="section-head"><h2>Heavy equipment required for relocations</h2></div>
+<div class="metrics" id="equipment-metrics"></div>
+<div class="equipment-grid"><div><h3>Equipment usage by category</h3><ul class="equipment-list" id="equipment-types"></ul></div>
+<div><h3>Movements with multiple equipment categories</h3><ul class="equipment-list" id="equipment-examples"></ul></div></div>
+<p id="equipment-coverage"></p><p>Matched by COW ID and exact movement date. Same-day duplicate movements are unlinked. Counts represent equipment tracker entries and categories. Several entries can refer to the same machine.</p>
+</section>
+<section id="breakdown" hidden><h2>Performance breakdown</h2><label class="field">Group by<select id="group-by"><option value="to">Destination region</option><option value="vendor">Vendor</option><option value="type">Movement type</option></select></label>
+<div class="table-wrap"><table><thead><tr><th>Group</th><th>Movements</th><th>Assessed</th><th>SLA missed</th><th>Compliance</th><th>Equipment-linked</th><th>Multi-equipment</th></tr></thead><tbody id="breakdown-rows"></tbody></table></div></section>
 <section id="register" hidden>
 <div class="section-head"><div><h2>Movement register</h2><p id="count"></p></div><button id="export">Export filtered CSV</button></div>
-<div class="table-wrap"><table><thead><tr><th scope="col">Moved</th><th scope="col">COW ID</th><th scope="col">BPM ID</th><th scope="col">Region route</th><th scope="col">Destination / event</th><th scope="col">Vendor</th><th scope="col">Type</th><th scope="col">Travel</th><th scope="col">KPI result</th><th scope="col">Exceeded</th><th scope="col">Remarks</th></tr></thead><tbody id="rows"></tbody></table></div>
+<div class="table-wrap"><table><thead><tr><th scope="col">Moved</th><th scope="col">COW ID</th><th scope="col">BPM ID</th><th scope="col">Region route</th><th scope="col">Destination / event</th><th scope="col">Vendor</th><th scope="col">Type</th><th scope="col">Travel</th><th scope="col">Planning</th><th scope="col">Distance (km)</th><th scope="col">BPM SLA duration</th><th scope="col">SLA target</th><th scope="col">SLA result</th><th scope="col">Over target</th><th scope="col">Heavy equipment</th><th scope="col">Remarks</th></tr></thead><tbody id="rows"></tbody></table></div>
 <div class="actions pagination"><button id="prev">Previous</button><span id="page"></span><button id="next">Next</button></div>
 </section>
-</main>
+</main></div>
 <script>
 'use strict';
 const byId = id => document.getElementById(id);
@@ -62,7 +89,9 @@ const count = new Intl.NumberFormat('en-GB');
 const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
 const regionNames = {CR:'Central', ER:'East', WR:'West', SR:'South'};
 const pageSize = 25;
-let records = [], filtered = [], page = 0, loadVersion = 0;
+let records = [], filtered = [], page = 0, hasLoaded = false;
+
+
 
 function parseCsv(csv) {
   const rows = [];
@@ -121,10 +150,22 @@ function duration(value) {
   return match ? +match[1] * 60 + +match[2] + +(match[3] ?? 0) / 60 : null;
 }
 
+const slaBands = [
+  {max:200, label:'Up to 200 km', planned:24, unplanned:16},
+  {max:500, label:'Over 200 to 500 km', planned:40, unplanned:24},
+  {max:1000, label:'Over 500 to 1,000 km', planned:54, unplanned:30},
+  {max:Infinity, label:'Over 1,000 km', planned:72, unplanned:40}
+];
+
+function distanceKm(value) {
+  const match = /^(\d+(?:,\d{3})*(?:\.\d+)?)\s*(?:km)?$/i.exec(value);
+  return match ? Number(match[1].replaceAll(',', '')) : null;
+}
+
 function readTracker(csv) {
   const [header = [], ...rows] = parseCsv(csv);
   const columns = new Map(header.map((label, i) => [normalized(label), i]));
-  const required = ['cowsid','moveddatetime','reacheddatetime','regionfrom','regionto','vendor','movementtype','includeexcludekpi','exceeded','cancelled'];
+  const required = ['cowsid','moveddatetime','reacheddatetime','regionfrom','regionto','vendor','movementtype','includeexcludekpi','sla','distancekm','planned','cancelled'];
   if (required.some(key => !columns.has(key))) throw new Error('This CSV is missing tracker columns. Export the COW Movement tracker tab with its original headers.');
   const movements = [];
   for (const row of rows) {
@@ -140,11 +181,16 @@ function readTracker(csv) {
       reached.toISOString().slice(0, 10) >= moved.toISOString().slice(0, 10) &&
       (!movedText.includes(':') || !reachedText.includes(':') || reached >= moved);
     const travel = completed && movedText.includes(':') && reachedText.includes(':') ? (reached - moved) / 60000 : null;
-    const exceeded = duration(get('exceeded'));
+    const planning = normalized(get('planned'));
+    const distance = distanceKm(get('distancekm'));
+    const band = Number.isFinite(distance) ? slaBands.find(item => distance <= item.max) : null;
+    const targetHours = band?.[planning] ?? null;
+    const actual = duration(get('sla'));
     const eligible = normalized(get('includeexcludekpi'));
+    const assessed = eligible === 'included' && targetHours !== null && actual !== null && actual < 365 * 24 * 60;
     const result = cancelled ? 'Cancelled' : eligible === 'excluded' ? 'Excluded' :
-      eligible === 'included' && exceeded !== null && exceeded < 365 * 24 * 60 ?
-        (exceeded > 0 ? 'Exceeded' : 'Within KPI') : 'Unassessed';
+      assessed ? (actual < targetHours * 60 ? 'Within SLA' : 'SLA missed') : 'Unassessed';
+    const exceeded = result === 'SLA missed' ? actual - targetHours * 60 : null;
     const monthText = /^([a-z]{3})[- ](\d{2}|\d{4})$/i.exec(get('month'));
     const monthIndex = monthText ? months.indexOf(title(monthText[1])) : -1;
     const month = moved ? moved.toISOString().slice(0, 7) : monthIndex >= 0 ?
@@ -154,7 +200,7 @@ function readTracker(csv) {
       return regionNames[value.toUpperCase()] ?? title(value);
     };
     movements.push({
-      cow, moved, movedText, month, completed, cancelled, travel, result, exceeded,
+      cow, moved, movedText, month, completed, cancelled, travel, result, exceeded, distance, actual, targetHours,
       bpm: get('bpmrequestid'), from: region('regionfrom'), to: region('regionto') || 'Unspecified',
       destination: get('tolocation'), event: get('eventname'), vendor: title(get('vendor')) || 'Unspecified',
       type: title(get('movementtype')) || 'Unspecified', category: title(get('catogery') || get('category')) || 'Unspecified',
@@ -164,13 +210,98 @@ function readTracker(csv) {
   return movements.sort((a, b) => (b.moved?.getTime() ?? -Infinity) - (a.moved?.getTime() ?? -Infinity));
 }
 
+const equipmentCategories = [
+  [/^crane/, 'Crane'], [/^prime mover/, 'Prime mover'], [/^trailer/, 'Trailer'],
+  [/^(?:(?:special|spacial) )?low bed/, 'Low bed'], [/^boom truck/, 'Boom truck'],
+  [/^(?:shevol|shovel)$/, 'Shovel'], [/^bulldozer$/, 'Bulldozer'], [/^(?:jcb|jcp)$/, 'Backhoe'],
+  [/^manlift/, 'Manlift'], [/^forklift$/, 'Forklift'], [/^water tank$/, 'Water tanker']
+];
+function equipmentDate(value) {
+  const slash = /^(\d{1,2})\/(\d{1,2})\/(\d{4})$/.exec(value);
+  if (slash) return dateTime(`${slash[3]}-${slash[2]}-${slash[1]}`);
+  const named = /^(\d{1,2})\s+([a-z]{3,9})\s+(\d{4})$/i.exec(value);
+  return named ? dateTime(`${named[1]}-${named[2].slice(0,3)}-${named[3]}`) : dateTime(value);
+}
+const keyFor = (cow, date) => date ? cow + '|' + date.toISOString().slice(0,10) : '';
+function linkEquipment(movements, csv) {
+  const [header = [], ...rows] = parseCsv(csv);
+  const columns = ['cowid','date','item'].map(key => header.findIndex(value => normalized(value) === key));
+  if (columns.includes(-1)) throw new Error('The equipment CSV needs COW ID, Date and Item columns. Export the MASTER_TRACKER tab.');
+  const equipment = new Map(), movementCounts = new Map();
+  for (const row of rows) {
+    const [cow, rawDate, item] = columns.map(index => clean(row[index]));
+    const category = equipmentCategories.find(([pattern]) => pattern.test(item.toLowerCase()))?.[1];
+    const key = keyFor(cow.toUpperCase(), equipmentDate(rawDate));
+    if (!cow || !key || !category) continue;
+    const entries = equipment.get(key) ?? [];
+    entries.push(category);
+    equipment.set(key, entries);
+  }
+  for (const movement of movements) {
+    const key = keyFor(movement.cow, movement.moved);
+    if (!movement.cancelled && key) movementCounts.set(key, (movementCounts.get(key) ?? 0) + 1);
+  }
+  for (const movement of movements) {
+    const key = keyFor(movement.cow, movement.moved);
+    movement.equipment = !movement.cancelled && movementCounts.get(key) === 1 ? equipment.get(key) ?? [] : [];
+    movement.equipmentTypes = [...new Set(movement.equipment)];
+  }
+}
+function renderEquipment(data) {
+  const linked = data.filter(row => row.equipment.length);
+  const multi = linked.filter(row => row.equipmentTypes.length > 1);
+  const entries = linked.reduce((sum,row) => sum + row.equipment.length,0);
+  const cards = [
+    ['Equipment-linked movements', count.format(linked.length)],
+    ['Multiple equipment categories', count.format(multi.length)],
+    ['Equipment entries', count.format(entries)]
+  ];
+  byId('equipment-metrics').replaceChildren(...cards.map(([label,value]) => {
+    const card = node('article',undefined,'card');
+    card.append(node('span',label),node('strong',value));
+    return card;
+  }));
+  const categories = new Map();
+  for (const row of linked) for (const category of row.equipment) categories.set(category,(categories.get(category) ?? 0)+1);
+  const listItem = (label,value) => {
+    const item = node('li');
+    item.append(node('span',label),node('b',value));
+    return item;
+  };
+  byId('equipment-types').replaceChildren(...[...categories].sort((a,b) => b[1]-a[1]).map(([key,value]) => listItem(key,count.format(value))));
+  byId('equipment-examples').replaceChildren(...multi.sort((a,b) => b.equipmentTypes.length-a.equipmentTypes.length || b.equipment.length-a.equipment.length).slice(0,5).map(row => listItem(row.cow+' · '+row.moved.toISOString().slice(0,10),row.equipmentTypes.join(' · '))));
+  if (!linked.length) byId('equipment-types').append(listItem('No equipment matches for these filters',''));
+  if (!multi.length) byId('equipment-examples').append(listItem('No multi-equipment movements for these filters',''));
+  byId('equipment-coverage').textContent = `${count.format(linked.length)} of ${count.format(data.filter(row => !row.cancelled).length)} non-cancelled movements have matched equipment entries in this selection.`;
+}
+function renderBreakdown() {
+  const groupBy = byId('group-by').value;
+  const groups = new Map();
+  for (const row of filtered) {
+    const group = groups.get(row[groupBy]) ?? {total:0,within:0,missed:0,linked:0,multi:0};
+    group.total++;
+    if (row.result === 'Within SLA') group.within++;
+    if (row.result === 'SLA missed') group.missed++;
+    if (row.equipment.length) group.linked++;
+    if (row.equipmentTypes.length > 1) group.multi++;
+    groups.set(row[groupBy],group);
+  }
+  byId('breakdown-rows').replaceChildren(...[...groups].sort((a,b) => b[1].total-a[1].total).map(([name,g]) => {
+    const row = node('tr'), assessed = g.within+g.missed;
+    row.append(...[name,count.format(g.total),count.format(assessed),count.format(g.missed),assessed ? (100*g.within/assessed).toFixed(1)+'%' : '—',count.format(g.linked),count.format(g.multi)].map(value => node('td',value)));
+    return row;
+  }));
+}
+
 const selectors = [
   ['month','Movement month'], ['to','Destination region'], ['vendor','Vendor'], ['type','Movement type'],
-  ['category','Category'], ['planned','Planning'], ['result','KPI result']
+  ['category','Category'], ['planned','Planning'], ['result','SLA result']
 ];
 const monthLabel = key => key ? `${months[+key.slice(5) - 1]} ${key.slice(0, 4)}` : 'Unspecified';
 function setupFilters() {
   const panel = byId('filters');
+  const selected = new Map(selectors.map(([key]) => [key, byId('filter-' + key)?.value]));
+  const query = byId('search')?.value ?? '';
   panel.replaceChildren();
   for (const [key, label] of selectors) {
     const field = node('label', label, 'field');
@@ -180,6 +311,7 @@ function setupFilters() {
     const values = [...new Set(records.map(record => record[key]))].sort();
     if (key === 'month') values.reverse();
     for (const value of values) select.append(new Option(key === 'month' ? monthLabel(value) : value, value));
+    select.value = values.includes(selected.get(key)) ? selected.get(key) : '*';
     select.addEventListener('change', update);
     field.append(select);
     panel.append(field);
@@ -189,6 +321,7 @@ function setupFilters() {
   input.type = 'search';
   input.placeholder = 'COW ID, BPM ID, location or event';
   input.id = 'search';
+  input.value = query;
   input.addEventListener('input', update);
   search.append(input);
   panel.append(search);
@@ -206,8 +339,8 @@ function update() {
   filtered = records.filter(record => active.every(([key,value]) => value === '*' || record[key] === value) &&
     [record.cow,record.bpm,record.destination,record.event].some(value => value.toLowerCase().includes(query)));
   const completed = filtered.filter(record => record.completed);
-  const within = filtered.filter(record => record.result === 'Within KPI').length;
-  const exceeded = filtered.filter(record => record.result === 'Exceeded').length;
+  const within = filtered.filter(record => record.result === 'Within SLA').length;
+  const exceeded = filtered.filter(record => record.result === 'SLA missed').length;
   const assessed = within + exceeded;
   const timed = completed.filter(record => record.travel !== null);
   const unassessed = filtered.filter(record => record.result === 'Unassessed').length;
@@ -215,8 +348,8 @@ function update() {
   const cards = [
     ['Movement records', count.format(filtered.length), `${count.format(new Set(filtered.map(record => record.cow)).size)} distinct COWs`],
     ['Completed travel', count.format(completed.length), 'Valid departure and arrival'],
-    ['KPI compliance', assessed ? `${(100 * within / assessed).toFixed(1)}%` : '—', `${count.format(assessed)} assessed · ${count.format(unassessed)} unassessed`],
-    ['KPI exceeded', count.format(exceeded), 'Included with recorded exceedance'],
+    ['SLA compliance', assessed ? `${(100 * within / assessed).toFixed(1)}%` : '—', `${count.format(assessed)} assessed · ${count.format(unassessed)} unassessed`],
+    ['SLA missed', count.format(exceeded), 'At or above the BPM target'],
     ['Cancelled', count.format(filtered.filter(record => record.cancelled).length), 'Marked cancelled in tracker'],
     ['Average travel time', minutesLabel(average), `${count.format(timed.length)} records with both times`]
   ];
@@ -228,6 +361,8 @@ function update() {
   drawBars('trend', completed, 'month', true);
   drawBars('regions', completed, 'to');
   drawBars('types', completed, 'type');
+  renderEquipment(filtered);
+  renderBreakdown();
   drawRegister();
 }
 
@@ -237,7 +372,7 @@ function drawBars(id, data, key, stacked = false) {
   for (const record of data) {
     const group = groups.get(record[key]) ?? {total:0, late:0};
     group.total++;
-    if (record.result === 'Exceeded') group.late++;
+    if (record.result === 'SLA missed') group.late++;
     groups.set(record[key], group);
   }
   const sorted = [...groups].sort(([a, av], [b, bv]) => stacked ? (a || '9999').localeCompare(b || '9999') : bv.total - av.total || a.localeCompare(b));
@@ -263,21 +398,22 @@ function drawBars(id, data, key, stacked = false) {
 function rowValues(record) {
   return [record.movedText, record.cow, record.bpm, `${record.from || 'Unspecified'} → ${record.to}`,
     [record.destination, record.event].filter(Boolean).join(' / '), record.vendor, record.type,
-    minutesLabel(record.cancelled ? null : record.travel), record.result,
-    ['Within KPI','Exceeded'].includes(record.result) ? minutesLabel(record.exceeded) : '—', record.remarks];
+    minutesLabel(record.cancelled ? null : record.travel), record.planned, String(record.distance ?? ''),
+    minutesLabel(record.actual), record.targetHours === null ? '—' : `< ${record.targetHours} h`,
+    record.result, minutesLabel(record.exceeded), record.equipmentTypes.join(' / '), record.remarks];
 }
 function drawRegister() {
   const totalPages = Math.max(1, Math.ceil(filtered.length / pageSize));
   const start = page * pageSize;
   byId('rows').replaceChildren(...filtered.slice(start, start + pageSize).map(record => {
     const row = node('tr');
-    row.append(...rowValues(record).map((value, i) => node('td', value || '—', i === 8 && record.result === 'Exceeded' ? 'exception' : '')));
+    row.append(...rowValues(record).map((value, i) => node('td', value || '—', i === 12 && record.result === 'SLA missed' ? 'exception' : '')));
     return row;
   }));
   if (!filtered.length) {
     const row = node('tr');
     const cell = node('td','No movement records match the filters.');
-    cell.colSpan = 11;
+    cell.colSpan = document.querySelectorAll('#register th').length;
     row.append(cell);
     byId('rows').append(row);
   }
@@ -288,43 +424,66 @@ function drawRegister() {
   byId('export').disabled = !filtered.length;
 }
 
-async function loadTracker(getCsv, sourceLabel) {
-  const version = ++loadVersion;
-  byId('status').textContent = 'Loading movement tracker…';
-  try {
-    const data = readTracker(await getCsv());
-    if (version !== loadVersion) return;
-    records = data;
-    setupFilters();
-    for (const id of ['filters-panel','metrics','definitions','charts','register']) byId(id).hidden = false;
-    update();
-    byId('status').textContent = `${count.format(records.length)} records loaded from ${sourceLabel}.`;
-  } catch (error) {
-    if (version !== loadVersion) return;
-    byId('status').textContent = error.message + (records.length ? ' Showing the previously loaded tracker.' : '');
-  }
-}
-
-byId('load').addEventListener('click', () => loadTracker(async () => {
-  let url;
-  try { url = new URL(byId('sheet').value.trim()); } catch { throw new Error('Enter a valid Google Sheets link.'); }
-  const match = /^\/spreadsheets\/d\/([a-zA-Z0-9_-]+)(?:\/|$)/.exec(url.pathname);
-  if (url.origin !== 'https://docs.google.com' || !match) throw new Error('Enter a Google Sheets link from docs.google.com.');
-  const gid = new URLSearchParams(url.hash.slice(1)).get('gid') ?? url.searchParams.get('gid');
-  const csvUrl = new URL(`https://docs.google.com/spreadsheets/d/${match[1]}/export?format=csv`);
-  if (gid && /^\d+$/.test(gid)) csvUrl.searchParams.set('gid',gid);
-  let response;
-  try { response = await fetch(csvUrl, {signal:AbortSignal.timeout(15000)}); } catch { /* CSV upload remains available. */ }
-  if (!response?.ok || response.headers.get('content-type')?.includes('text/html')) {
-    throw new Error('Google Sheets could not be read directly. Download the tracker tab as CSV and upload it here.');
+const sourceKey = 'cow-dashboard-sheet-links';
+let connected = null;
+async function readSheet(link,range) {
+  const source = new URL(link);
+  const match = source.pathname.match(/^[/]spreadsheets[/]d[/]([A-Za-z0-9_-]+)(?:[/]|$)/);
+  if (source.origin !== 'https://docs.google.com' || !match) throw new Error('Use a Google Sheets tab link.');
+  const url = new URL('https://docs.google.com/spreadsheets/d/'+match[1]+'/gviz/tq?tqx=out:csv');
+  const gid = new URLSearchParams(source.hash.slice(1)).get('gid') ?? source.searchParams.get('gid');
+  if (gid && /^[0-9]+$/.test(gid)) url.searchParams.set('gid',gid);
+  if (range) url.searchParams.set('range',range);
+  const response = await fetch(url,{cache:'no-store',signal:AbortSignal.timeout(25000)});
+  if (!response.ok || !response.headers.get('content-type')?.includes('text/csv')) {
+    throw new Error('Google Sheets did not return CSV. Check the tab link and sharing settings.');
   }
   return response.text();
-}, 'Google Sheets'));
-byId('file').addEventListener('change', event => {
-  const file = event.target.files[0];
-  if (file) loadTracker(() => file.text(), file.name);
-  event.target.value = '';
-});
+}
+async function loadSheets(event, links) {
+  event?.preventDefault();
+  const [movementLink,equipmentLink] = links ?? [byId('movement-file').value.trim(),byId('equipment-file').value.trim()];
+  const button = byId('load');
+  const status = byId('status');
+  if (!movementLink || !equipmentLink || button.disabled) return;
+  button.disabled = true;
+  status.textContent = 'Reading Google Sheets…';
+  try {
+    const [movementCsv, equipmentCsv] = await Promise.all([readSheet(movementLink), readSheet(equipmentLink,'A:F')]);
+    const next = readTracker(movementCsv);
+    if (!next.length) throw new Error('The movement CSV has no COW records.');
+    linkEquipment(next, equipmentCsv);
+    records = next;
+    setupFilters();
+    for (const id of ['filters-panel','metrics','definitions','sla-targets','charts','equipment','breakdown','register']) byId(id).hidden = false;
+    update();
+    hasLoaded = true;
+    connected = [movementLink,equipmentLink];
+    try { localStorage.setItem(sourceKey,JSON.stringify(connected)); } catch {}
+    status.textContent = count.format(records.length)+' movements · Last refreshed '+new Date().toLocaleTimeString();
+  } catch (error) {
+    status.textContent = (error.message || 'Could not read Google Sheets.') +
+      (hasLoaded ? ' Showing the last successful load.' : '');
+  } finally {
+    button.disabled = false;
+  }
+}
+byId('sla-matrix').replaceChildren(...slaBands.map(band => {
+  const row = node('tr');
+  row.append(node('td', band.label), node('td', `< ${band.planned} h`), node('td', `< ${band.unplanned} h`));
+  return row;
+}));
+byId('group-by').addEventListener('change', renderBreakdown);
+byId('uploads').addEventListener('submit',loadSheets);
+try {
+  const saved = JSON.parse(localStorage.getItem(sourceKey));
+  if (Array.isArray(saved) && saved.length === 2 && saved.every(link => typeof link === 'string')) {
+    byId('movement-file').value = saved[0];
+    byId('equipment-file').value = saved[1];
+    loadSheets(null,saved);
+  }
+} catch {}
+setInterval(() => { if (connected) loadSheets(null,connected); },300000);
 byId('reset').addEventListener('click', () => {
   for (const [key] of selectors) byId('filter-' + key).value = '*';
   byId('search').value = '';
@@ -333,7 +492,7 @@ byId('reset').addEventListener('click', () => {
 byId('prev').addEventListener('click', () => { page--; drawRegister(); });
 byId('next').addEventListener('click', () => { page++; drawRegister(); });
 byId('export').addEventListener('click', () => {
-  const header = Array.from(document.querySelectorAll('th'), cell => cell.textContent);
+  const header = Array.from(document.querySelectorAll('#register th'), cell => cell.textContent);
   const escape = value => {
     const safe = /^\s*[=+@-]/.test(value) ? "'" + value : value;
     return '"' + safe.replaceAll('"','""') + '"';
