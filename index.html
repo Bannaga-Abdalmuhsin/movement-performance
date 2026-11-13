@@ -35,17 +35,17 @@ button.primary{background:var(--purple);color:white;border-color:var(--purple)}b
 <small>ACES Managed Services</small>
 </aside>
 <div class="app-shell">
-<header class="topbar"><span>stc COW / Movement Performance</span><span>Google Sheets</span></header>
+<header class="topbar"><span>stc COW / Movement Performance</span><span>Supabase</span></header>
 <main id="overview">
 <div class="page-heading"><div><div class="eyebrow">OPERATIONAL EXCELLENCE</div><h1>COW Movement Performance</h1><p>Relocation workload, heavy equipment and BPM SLA performance.</p></div></div>
 <section aria-labelledby="source-heading">
-<h2 id="source-heading">Google Sheets data</h2>
-<p>Enter both tab links once on this browser. The dashboard refreshes from Sheets every five minutes while open.</p>
-<form id="uploads"><div class="filters">
-<label class="field">COW Movement tracker<input id="movement-file" type="url" required></label>
-<label class="field">Equipment MASTER_TRACKER<input id="equipment-file" type="url" required></label>
-</div><div class="actions" style="margin-top:12px"><button class="primary" id="load" type="submit">Connect / Refresh</button></div></form>
-<p id="status" role="status" aria-live="polite">Enter both Google Sheets tab links.</p>
+<h2 id="source-heading">Performance account</h2>
+<form id="login"><div class="filters">
+<label class="field">Email<input id="email" type="email" autocomplete="username" required></label>
+<label class="field">Password<input id="password" type="password" autocomplete="current-password" required></label>
+</div><button class="primary" type="submit">Sign in</button></form>
+<div id="account-actions" hidden><button id="load">Refresh data</button> <button id="logout">Sign out</button></div>
+<p id="status" role="status" aria-live="polite">Sign in with your Supabase performance account.</p>
 </section>
 <section id="filters-panel" hidden>
 <div class="section-head"><h2>Filters</h2><button id="reset">Reset filters</button></div>
@@ -424,49 +424,71 @@ function drawRegister() {
   byId('export').disabled = !filtered.length;
 }
 
-const sourceKey = 'cow-dashboard-sheet-links';
-let connected = null;
-async function readSheet(link,range) {
-  const source = new URL(link);
-  const match = source.pathname.match(/^[/]spreadsheets[/]d[/]([A-Za-z0-9_-]+)(?:[/]|$)/);
-  if (source.origin !== 'https://docs.google.com' || !match) throw new Error('Use a Google Sheets tab link.');
-  const url = new URL('https://docs.google.com/spreadsheets/d/'+match[1]+'/gviz/tq?tqx=out:csv');
-  const gid = new URLSearchParams(source.hash.slice(1)).get('gid') ?? source.searchParams.get('gid');
-  if (gid && /^[0-9]+$/.test(gid)) url.searchParams.set('gid',gid);
-  if (range) url.searchParams.set('range',range);
-  const response = await fetch(url,{cache:'no-store',signal:AbortSignal.timeout(25000)});
-  if (!response.ok || !response.headers.get('content-type')?.includes('text/csv')) {
-    throw new Error('Google Sheets did not return CSV. Check the tab link and sharing settings.');
+const backend = 'https://vtsqazxhszbmwiswthgt.supabase.co';
+const apiKey = 'sb_publishable_4KjgwIbzTvjOVcqz0AB7Eg_5rJLruG3';
+const panels = ['filters-panel','metrics','definitions','sla-targets','charts','equipment','breakdown','register'];
+let session = null;
+async function request(path, options = {}, token = null) {
+  const response = await fetch(backend+path,{
+    ...options, cache:'no-store', signal:AbortSignal.timeout(20000),
+    headers:{apikey:apiKey,...(token ? {Authorization:'Bearer '+token} : {}),...options.headers}
+  });
+  if (!response.ok) {
+    const error = new Error('Supabase returned HTTP '+response.status);
+    error.status = response.status;
+    throw error;
   }
-  return response.text();
+  return response.status === 204 ? null : response.json();
 }
-async function loadSheets(event, links) {
-  event?.preventDefault();
-  const [movementLink,equipmentLink] = links ?? [byId('movement-file').value.trim(),byId('equipment-file').value.trim()];
+async function readRows(table,token) {
+  const rows = [];
+  let after = 0;
+  while (true) {
+    const batch = await request('/rest/v1/'+table+'?select=source_row,cells&order=source_row.asc&limit=500&source_row=gt.'+after,{},token);
+    if (!batch.length) break;
+    rows.push(...batch.map(row => row.cells));
+    after = batch.at(-1).source_row;
+  }
+  return rows;
+}
+const toCsv = rows => rows.map(row => row.map(cell => '"'+String(cell ?? '').replaceAll('"','""')+'"').join(',')).join(String.fromCharCode(10));
+function clearSession(message) {
+  session = null;
+  records = []; filtered = []; hasLoaded = false;
+  for (const id of panels) byId(id).hidden = true;
+  for (const id of ['metrics','filters','rows','trend','regions','types','equipment-metrics','equipment-types','equipment-examples','breakdown-rows']) byId(id).replaceChildren();
+  byId('equipment-coverage').textContent = '';
+  byId('count').textContent = '';
+  byId('login').hidden = false;
+  byId('account-actions').hidden = true;
+  byId('status').textContent = message;
+}
+async function refresh() {
+  const token = session;
   const button = byId('load');
-  const status = byId('status');
-  if (!movementLink || !equipmentLink || button.disabled) return;
+  if (!token || button.disabled) return;
   button.disabled = true;
-  status.textContent = 'Reading Google Sheets…';
+  byId('status').textContent = 'Loading movement and equipment data…';
   try {
-    const [movementCsv, equipmentCsv] = await Promise.all([readSheet(movementLink), readSheet(equipmentLink,'A:F')]);
-    const next = readTracker(movementCsv);
-    if (!next.length) throw new Error('The movement CSV has no COW records.');
-    linkEquipment(next, equipmentCsv);
+    const [movement,equipment] = await Promise.all([readRows('cow_movement_sheet_rows',token),readRows('cow_equipment_sheet_rows',token)]);
+    if (session !== token) return;
+    if (!movement.length || !equipment.length) {
+      clearSession('No dashboard data is available to this account. Check your active performance membership.');
+      return;
+    }
+    const next = readTracker(toCsv(movement));
+    linkEquipment(next,toCsv(equipment));
     records = next;
     setupFilters();
-    for (const id of ['filters-panel','metrics','definitions','sla-targets','charts','equipment','breakdown','register']) byId(id).hidden = false;
+    for (const id of panels) byId(id).hidden = false;
     update();
     hasLoaded = true;
-    connected = [movementLink,equipmentLink];
-    try { localStorage.setItem(sourceKey,JSON.stringify(connected)); } catch {}
-    status.textContent = count.format(records.length)+' movements · Last refreshed '+new Date().toLocaleTimeString();
+    byId('status').textContent = count.format(records.length)+' movements loaded from Supabase.';
   } catch (error) {
-    status.textContent = (error.message || 'Could not read Google Sheets.') +
-      (hasLoaded ? ' Showing the last successful load.' : '');
-  } finally {
-    button.disabled = false;
-  }
+    if (session !== token) return;
+    if (error.status === 401 || error.status === 403) clearSession('Session expired or access denied. Sign in again.');
+    else byId('status').textContent = 'Could not load Supabase data.'+(hasLoaded ? ' Showing the previous load.' : '');
+  } finally { button.disabled = false; }
 }
 byId('sla-matrix').replaceChildren(...slaBands.map(band => {
   const row = node('tr');
@@ -474,16 +496,32 @@ byId('sla-matrix').replaceChildren(...slaBands.map(band => {
   return row;
 }));
 byId('group-by').addEventListener('change', renderBreakdown);
-byId('uploads').addEventListener('submit',loadSheets);
-try {
-  const saved = JSON.parse(localStorage.getItem(sourceKey));
-  if (Array.isArray(saved) && saved.length === 2 && saved.every(link => typeof link === 'string')) {
-    byId('movement-file').value = saved[0];
-    byId('equipment-file').value = saved[1];
-    loadSheets(null,saved);
-  }
-} catch {}
-setInterval(() => { if (connected) loadSheets(null,connected); },300000);
+byId('login').addEventListener('submit',async event => {
+  event.preventDefault();
+  const button = event.currentTarget.querySelector('button');
+  if (button.disabled) return;
+  button.disabled = true;
+  byId('status').textContent = 'Signing in…';
+  const password = byId('password').value;
+  byId('password').value = '';
+  try {
+    const data = await request('/auth/v1/token?grant_type=password',{
+      method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({email:byId('email').value.trim(),password})
+    });
+    session = data.access_token;
+    byId('login').hidden = true;
+    byId('account-actions').hidden = false;
+    await refresh();
+  } catch { clearSession('Sign-in failed. Check your email and password.'); }
+  finally { button.disabled = false; }
+});
+byId('load').addEventListener('click',refresh);
+byId('logout').addEventListener('click',async () => {
+  const token = session;
+  clearSession('Signed out.');
+  try { await request('/auth/v1/logout?scope=local',{method:'POST'},token); } catch {}
+});
 byId('reset').addEventListener('click', () => {
   for (const [key] of selectors) byId('filter-' + key).value = '*';
   byId('search').value = '';
